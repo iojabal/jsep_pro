@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dibujo SVG Paso a Paso</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #001f3f; /* Azul marino */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+        overflow: hidden; /* Evita el desplazamiento */
+      }
+      #svg-container {
+        position: relative;
+        width: 80%;
+        height: 80%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #texto-container {
+        position: absolute;
+        top: -15%; /* Ajusta la posición vertical del texto */
+        left: 0;
+        width: 100%;
+        height: 20%; /* Altura del contenedor del texto */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        pointer-events: none; /* Para que no interfiera con el SVG */
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+      }
+      path {
+        stroke-width: 2;
+        stroke-dasharray: 300;
+        stroke-dashoffset: 300;
+        transition: stroke-dashoffset 1s ease-in-out, fill 1s ease-in-out;
+        fill-opacity: 0;
+      }
+      text {
+        font-family: Arial, sans-serif;
+        font-size: 16px; /* Tamaño del texto */
+        fill: white; /* Texto en blanco para contrastar con el fondo */
+        text-anchor: middle;
+      }
+      .destello {
+        fill: white;
+        opacity: 0;
+        animation: destello 2s infinite ease-in-out;
+      }
+      @keyframes destello {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="svg-container">
+      <div id="texto-container">
+        <svg id="texto-svg" viewBox="0 0 300 100" width="100%" height="100%">
+          <!-- Texto curvo -->
+          <path
+            id="curvaTexto"
+            d="M 10,70 C 100,10 200,10 290,70"
+            fill="none"
+          />
+          <text>
+            <textPath href="#curvaTexto" startOffset="50%">
+              <!-- El texto se agregará dinámicamente -->
+            </textPath>
+          </text>
+        </svg>
+      </div>
+      <!-- Destellos de luz -->
+      <svg
+        id="destellos-svg"
+        width="100%"
+        height="100%"
+        style="position: absolute; top: 0; left: 0"
+      >
+        <!-- Los destellos se generarán dinámicamente -->
+      </svg>
+    </div>
+    <audio id="musica" src="musica.mp3" preload="auto" loop></audio>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        fetch("./tulips.svg") // Reemplaza con la ruta de tu archivo SVG
+          .then((response) => response.text())
+          .then((data) => {
+            document.getElementById("svg-container").innerHTML += data;
+            let svg = document.querySelector(
+              "#svg-container svg:not(#texto-svg):not(#destellos-svg)"
+            );
+            if (svg) {
+              svg.setAttribute("width", "100%");
+              svg.setAttribute("height", "100%");
+            }
+
+            // Animación de los trazos del SVG
+            let paths = document.querySelectorAll(
+              "#svg-container svg:not(#texto-svg):not(#destellos-svg) path"
+            );
+            let delay = 100; // Intervalo entre cada línea
+            let colorDelay = 1000; // Retraso más largo para el color
+            let tiempoTotalAnimacionSVG = 0;
+
+            paths.forEach((path, index) => {
+              path.style.strokeDasharray = path.getTotalLength();
+              path.style.strokeDashoffset = path.getTotalLength();
+              path.style.stroke = path.getAttribute("stroke") || "black";
+              path.style.fill = path.getAttribute("fill") || "none";
+              setTimeout(() => {
+                path.style.strokeDashoffset = "0";
+                setTimeout(() => {
+                  path.style.fillOpacity = "1";
+                }, colorDelay);
+              }, index * delay);
+
+              // Calcular el tiempo total de la animación del SVG
+              tiempoTotalAnimacionSVG = Math.max(
+                tiempoTotalAnimacionSVG,
+                index * delay + colorDelay
+              );
+            });
+
+            // Efecto de máquina de escribir en el texto curvo
+            const texto = "¿Vale, quieres ser mi San Valentín?🦇💘";
+            const textPath = document.querySelector("#texto-svg textPath");
+            let i = 0;
+            const velocidadEscritura = 100; // Velocidad en milisegundos
+
+            // Iniciar el efecto de máquina de escribir después de que termine la animación del SVG
+            setTimeout(() => {
+              function escribirTexto() {
+                if (i < texto.length) {
+                  textPath.textContent += texto.charAt(i);
+                  i++;
+                  setTimeout(escribirTexto, velocidadEscritura);
+                }
+              }
+              escribirTexto();
+            }, tiempoTotalAnimacionSVG);
+
+            // Generar destellos de luz aleatorios
+            const destellosSVG = document.getElementById("destellos-svg");
+            const numDestellos = 50; // Número de destellos
+            const ancho = destellosSVG.clientWidth;
+            const alto = destellosSVG.clientHeight;
+
+            for (let i = 0; i < numDestellos; i++) {
+              const circle = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "circle"
+              );
+              circle.setAttribute("class", "destello");
+              circle.setAttribute("cx", Math.random() * ancho);
+              circle.setAttribute("cy", Math.random() * alto);
+              circle.setAttribute("r", Math.random() * 3 + 1); // Tamaño aleatorio entre 1 y 4
+              circle.setAttribute(
+                "style",
+                `animation-delay: ${Math.random() * 2}s;`
+              );
+              destellosSVG.appendChild(circle);
+            }
+
+            const musica = document.getElementById("musica");
+
+            function playMusic() {
+              musica.play().catch((error) => {
+                console.error("Error al reproducir audio:", error);
+              });
+              // Remove the event listener after playing to avoid multiple playbacks
+              document.removeEventListener("click", playMusic);
+              document.removeEventListener("touchstart", playMusic); // For mobile
+            }
+
+            document.addEventListener("click", playMusic);
+            document.addEventListener("touchstart", playMusic); // For mobile
+          });
+      });
+    </script>
+  </body>
+</html>
